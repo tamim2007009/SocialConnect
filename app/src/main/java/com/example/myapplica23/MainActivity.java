@@ -12,6 +12,7 @@ import com.example.myapplica23.Fragment.HomeFragment;
 import com.example.myapplica23.Fragment.NotificationFragment;
 import com.example.myapplica23.Fragment.ProfileFragment;
 import com.example.myapplica23.Fragment.SearchFragment;
+
 import com.example.myapplica23.databinding.ActivityMainBinding;
 import com.iammert.library.readablebottombar.ReadableBottomBar;
 
@@ -24,6 +25,9 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+        transaction.replace(R.id.container, new HomeFragment());
+        transaction.commit();
         binding.readableBottomBar.setOnItemSelectListener(new ReadableBottomBar.ItemSelectListener() {
             @Override
             public void onItemSelected(int i) {
