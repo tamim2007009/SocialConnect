@@ -10,7 +10,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.myapplica23.Adapter.DashboardAdapter;
 import com.example.myapplica23.Adapter.StoryAdapter;
+import com.example.myapplica23.Model.DashboardModel;
 import com.example.myapplica23.Model.StoryModel;
 import com.example.myapplica23.R;
 
@@ -19,9 +21,16 @@ import java.util.ArrayList;
 
 public class HomeFragment extends Fragment {
 
-
+// for story
  RecyclerView storyRV;
  ArrayList<StoryModel> list;
+
+ // for dashboard
+    RecyclerView dashboardRV;
+    ArrayList<DashboardModel> dashboardList;
+
+
+
     public HomeFragment() {
 
     }
@@ -51,6 +60,30 @@ public class HomeFragment extends Fragment {
         storyRV.setLayoutManager(layoutManager);
         storyRV.setNestedScrollingEnabled(false);
         storyRV.setAdapter(adapter);
+
+
+        // dashboard
+        dashboardRV= view.findViewById(R.id.dashboardRV);
+        dashboardList = new ArrayList<>();
+        dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post1, R.drawable.ic_more_svgrepo_com, "John",
+                "This is a post", "100", "50", "10"));
+        dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post2, R.drawable.ic_more_svgrepo_com, "John",
+                "This is a post", "100", "50", "10"));
+
+        dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post3, R.drawable.ic_more_svgrepo_com, "John",
+                "This is a post", "100", "50", "10"));
+
+        dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post1, R.drawable.ic_more_svgrepo_com, "John",
+                "This is a post", "100", "50", "10"));
+
+        dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post3, R.drawable.ic_more_svgrepo_com, "John",
+                "This is a post", "100", "50", "10"));
+
+        DashboardAdapter dashboardAdapter = new DashboardAdapter(dashboardList, getContext());
+        LinearLayoutManager layoutManager1 = new LinearLayoutManager(getContext());
+        dashboardRV.setLayoutManager(layoutManager1);
+        dashboardRV.setNestedScrollingEnabled(false);
+        dashboardRV.setAdapter(dashboardAdapter);
 
         return  view;
     }
