@@ -21,11 +21,11 @@ import java.util.ArrayList;
 
 public class HomeFragment extends Fragment {
 
-// for story
- RecyclerView storyRV;
- ArrayList<StoryModel> list;
+    // for story
+    RecyclerView storyRV;
+    ArrayList<StoryModel> list;
 
- // for dashboard
+    // for dashboard
     RecyclerView dashboardRV;
     ArrayList<DashboardModel> dashboardList;
 
@@ -66,18 +66,18 @@ public class HomeFragment extends Fragment {
         dashboardRV= view.findViewById(R.id.dashboardRV);
         dashboardList = new ArrayList<>();
         dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post1, R.drawable.ic_more_svgrepo_com, "John",
-                "This is a post", "100", "50", "10"));
+                "This is a post", "0", "0", "0"));
         dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post2, R.drawable.ic_more_svgrepo_com, "John",
-                "This is a post", "100", "50", "10"));
+                "This is a post", "0", "0", "0"));
 
         dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post3, R.drawable.ic_more_svgrepo_com, "John",
-                "This is a post", "100", "50", "10"));
+                "This is a post", "0", "0", "0"));
 
         dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post1, R.drawable.ic_more_svgrepo_com, "John",
-                "This is a post", "100", "50", "10"));
+                "This is a post", "0", "0", "0"));
 
         dashboardList.add(new DashboardModel(R.drawable.profile, R.drawable.post3, R.drawable.ic_more_svgrepo_com, "John",
-                "This is a post", "100", "50", "10"));
+                "This is a post", "0", "0", "0"));
 
         DashboardAdapter dashboardAdapter = new DashboardAdapter(dashboardList, getContext());
         LinearLayoutManager layoutManager1 = new LinearLayoutManager(getContext());
