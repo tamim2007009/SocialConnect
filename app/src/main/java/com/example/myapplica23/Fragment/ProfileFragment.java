@@ -10,14 +10,13 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.example.myapplica23.Adapter.FriendAdapter;
-import com.example.myapplica23.Model.FriendModel;
+import com.example.myapplica23.Adapter.FollowersAdapter;
+import com.example.myapplica23.Model.Follow;
 import com.example.myapplica23.Model.User;
 import com.example.myapplica23.R;
 import com.example.myapplica23.databinding.FragmentProfileBinding;
@@ -37,7 +36,7 @@ import java.util.ArrayList;
 
 public class ProfileFragment extends Fragment {
     RecyclerView recyclerView;
-   // ArrayList<Follow> list;
+    ArrayList<Follow> list;
     FragmentProfileBinding binding;
     FirebaseAuth auth;
     FirebaseStorage storage;
@@ -103,7 +102,7 @@ public class ProfileFragment extends Fragment {
                     }
                 });
 
-        //list = new ArrayList<>();
+        list = new ArrayList<>();
 
 //        list.add(new Follow(R.drawable.profile3));
 //        list.add(new Follow(R.drawable.profile2));
@@ -111,16 +110,17 @@ public class ProfileFragment extends Fragment {
 //        list.add(new Follow(R.drawable.cover1));
 //        list.add(new Follow(R.drawable.cover2));
 
-       // FollowersAdapter adapter = new FollowersAdapter(list, getContext());
-      //  LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-        //binding.friendRecyclerView.setLayoutManager(linearLayoutManager);
-        //binding.friendRecyclerView.setAdapter(adapter);
+        FollowersAdapter adapter = new FollowersAdapter(list, getContext());
+       LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+        binding.friendRecyclerView.setLayoutManager(linearLayoutManager);
+        binding.friendRecyclerView.setAdapter(adapter);
 
-      /*  database.getReference().child("Users")
+        database.getReference().child("Users")
                 .child(auth.getUid())
                 .child("followers").addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        list.clear();
                         for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
                             Follow follow = dataSnapshot.getValue(Follow.class);
                             list.add(follow);
@@ -135,7 +135,7 @@ public class ProfileFragment extends Fragment {
                 });
 
 
-       */
+
 
         binding.changeCoverPhoto.setOnClickListener(new View.OnClickListener() {
             @Override

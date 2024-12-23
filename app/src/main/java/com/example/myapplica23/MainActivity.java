@@ -1,10 +1,13 @@
 package com.example.myapplica23;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.SurfaceControl;
 import android.view.View;
 import android.widget.Toast;
@@ -16,11 +19,13 @@ import com.example.myapplica23.Fragment.ProfileFragment;
 import com.example.myapplica23.Fragment.SearchFragment;
 
 import com.example.myapplica23.databinding.ActivityMainBinding;
+import com.google.firebase.auth.FirebaseAuth;
 import com.iammert.library.readablebottombar.ReadableBottomBar;
 
 public class MainActivity extends AppCompatActivity {
 
     ActivityMainBinding binding;
+    FirebaseAuth auth = FirebaseAuth.getInstance();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,4 +80,15 @@ public class MainActivity extends AppCompatActivity {
         getMenuInflater().inflate(R.menu.menu_items, menu);
         return true;
     }
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.setting) {
+            auth.signOut();
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            startActivity(intent);
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
 }
