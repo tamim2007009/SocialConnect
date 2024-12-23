@@ -1,14 +1,58 @@
 package com.example.myapplica23.Model;
 
+
 public class User {
+    private String name, profession, email, password;
+    private String coverPhoto;
+    private String UserID;
+    private String profile;
+    private int followerCount;
 
-    private  String name,profession, email, password;
+    public int getFollowerCount() {
+        return followerCount;
+    }
 
-    public User(String name, String profession, String email, String password) {
-        this.name = name;
-        this.profession = profession;
-        this.email = email;
-        this.password = password;
+    public void setFollowerCount(int followerCount) {
+        this.followerCount = followerCount;
+    }
+
+    public String getUserID() {
+        return UserID;
+    }
+
+    public void setUserID(String userID) {
+        UserID = userID;
+    }
+
+
+    public String getProfile() {
+        return profile;
+    }
+
+    public void setProfile(String profile) {
+        this.profile = profile;
+    }
+
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
+    }
+
+    private String profilePhoto;
+
+    public User() {
+    }
+
+    public String getCoverPhoto() {
+        return coverPhoto;
+    }
+
+    public void setCoverPhoto(String coverPhoto) {
+        this.coverPhoto = coverPhoto;
     }
 
     public String getName() {
@@ -40,6 +84,13 @@ public class User {
     }
 
     public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public User(String name, String profession, String email, String password) {
+        this.name = name;
+        this.profession = profession;
+        this.email = email;
         this.password = password;
     }
 }
