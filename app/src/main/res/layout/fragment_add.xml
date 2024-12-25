@@ -14,7 +14,7 @@
         android:layout_marginStart="16dp"
         android:fontFamily="@font/roboto_bold"
         android:text="Create Post"
-        android:textColor="@color/black"
+        android:textColor="@color/orange"
         android:textSize="20sp"
         app:layout_constraintBottom_toBottomOf="@+id/postBtn"
         app:layout_constraintStart_toStartOf="parent"
