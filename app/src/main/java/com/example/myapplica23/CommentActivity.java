@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import com.example.myapplica23.Adapter.CommentAdapter;
 import com.example.myapplica23.Model.Comment;
+import com.example.myapplica23.Model.Notification;
 import com.example.myapplica23.Model.Post;
 import com.example.myapplica23.Model.User;
 import com.example.myapplica23.databinding.ActivityCommentBinding;
@@ -132,18 +133,18 @@ public class CommentActivity extends AppCompatActivity {
                                                                 Toast.makeText(CommentActivity.this, "Commented", Toast.LENGTH_SHORT).show();
 
 
-//                                                                Notification notification = new Notification();
-//                                                                notification.setNotificationBy(FirebaseAuth.getInstance().getUid());
-//                                                                notification.setNotificationAt(new Date().getTime());
-//                                                                notification.setPostId(postId);
-//                                                                notification.setPostedBy(postedBy);
-//                                                                notification.setType("comment");
-//
-//                                                                FirebaseDatabase.getInstance().getReference()
-//                                                                        .child("notification")
-//                                                                        .child(postedBy)
-//                                                                        .push()
-//                                                                        .setValue(notification);
+                                                                Notification notification = new Notification();
+                                                                notification.setNotificationBy(FirebaseAuth.getInstance().getUid());
+                                                                notification.setNotificationAt(new Date().getTime());
+                                                                notification.setPostId(postId);
+                                                                notification.setPostedBy(postedBy);
+                                                                notification.setType("comment");
+
+                                                                FirebaseDatabase.getInstance().getReference()
+                                                                        .child("notification")
+                                                                        .child(postedBy)
+                                                                        .push()
+                                                                        .setValue(notification);
 
                                                             }
                                                         });

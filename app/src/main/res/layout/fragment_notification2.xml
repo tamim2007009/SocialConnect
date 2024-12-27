@@ -6,7 +6,7 @@
     android:id="@+id/frameLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".Fragment.Notificaltion2Fragment">
+    tools:context=".Fragment.Notification2Fragment">
 
     <com.cooltechworks.views.shimmer.ShimmerRecyclerView
         android:id="@+id/notification2RV"
@@ -21,3 +21,11 @@
         app:shimmer_demo_child_count="10"
         app:shimmer_demo_layout="@layout/demo_notification"/>
 </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
+
+
+
+
+
