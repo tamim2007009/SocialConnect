@@ -15,7 +15,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 
 import com.cooltechworks.views.shimmer.ShimmerRecyclerView;
 import com.example.myapplica23.Adapter.PostAdapter;
@@ -36,30 +35,25 @@ import com.google.firebase.storage.UploadTask;
 import com.makeramen.roundedimageview.RoundedImageView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
-
-
 public class HomeFragment extends Fragment {
 
-    //    RecyclerView ;
     ShimmerRecyclerView dashboardRV, storyRV;
     ArrayList<Story> storyList;
     ArrayList<Post> postList;
-    ImageView addStory;
     FirebaseDatabase database;
     FirebaseAuth auth;
     FirebaseStorage storage;
     RoundedImageView addStoryImage;
     ActivityResultLauncher<String> galleryLauncher;
     ProgressDialog dialog;
-    CircleImageView chats;
 
     public HomeFragment() {
     }
-
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -71,7 +65,7 @@ public class HomeFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view =  inflater.inflate(R.layout.fragment_home, container, false);
+        View view = inflater.inflate(R.layout.fragment_home, container, false);
 
         dashboardRV = view.findViewById(R.id.dashboardRV);
         dashboardRV.showShimmerAdapter();
@@ -82,46 +76,43 @@ public class HomeFragment extends Fragment {
         database = FirebaseDatabase.getInstance();
         auth = FirebaseAuth.getInstance();
         storage = FirebaseStorage.getInstance();
+
         dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         dialog.setTitle("Story Uploading");
         dialog.setMessage("Please Wait");
         dialog.setCancelable(false);
 
-
-//        ============STORY=============
-
-
-
+        // Story list setup
         storyList = new ArrayList<>();
-
-        StoryAdapter adapter = new StoryAdapter(storyList,getContext());
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext(),LinearLayoutManager.HORIZONTAL,false);
-        storyRV.setLayoutManager(linearLayoutManager);
+        StoryAdapter storyAdapter = new StoryAdapter(storyList, getContext());
+        LinearLayoutManager storyLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+        storyRV.setLayoutManager(storyLayoutManager);
         storyRV.setNestedScrollingEnabled(false);
 
         database.getReference()
-                .child("stories").addValueEventListener(new ValueEventListener() {
+                .child("stories")
+                .addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if (snapshot.exists()){
+                        if (snapshot.exists()) {
                             storyList.clear();
-                            for(DataSnapshot storySnapshot : snapshot.getChildren()){
+                            for (DataSnapshot storySnapshot : snapshot.getChildren()) {
                                 Story story = new Story();
                                 story.setStoryBy(storySnapshot.getKey());
                                 story.setStoryAt(storySnapshot.child("postedBy").getValue(Long.class));
 
-                                ArrayList<UserStories> stories = new ArrayList<>();
-                                for (DataSnapshot snapshot1 : storySnapshot.child("userStories").getChildren()){
-                                    UserStories userStories = snapshot1.getValue(UserStories.class);
-                                    stories.add(userStories);
+                                ArrayList<UserStories> userStories = new ArrayList<>();
+                                for (DataSnapshot snapshot1 : storySnapshot.child("userStories").getChildren()) {
+                                    UserStories singleStory = snapshot1.getValue(UserStories.class);
+                                    userStories.add(singleStory);
                                 }
-                                story.setStories(stories);
+                                story.setStories(userStories);
                                 storyList.add(story);
                             }
 
-                            storyRV.setAdapter(adapter);
+                            storyRV.setAdapter(storyAdapter);
                             storyRV.hideShimmerAdapter();
-                            adapter.notifyDataSetChanged();
+                            storyAdapter.notifyDataSetChanged();
                         }
                     }
 
@@ -131,106 +122,78 @@ public class HomeFragment extends Fragment {
                     }
                 });
 
-
+        // Post list setup
         postList = new ArrayList<>();
-
-
         PostAdapter postAdapter = new PostAdapter(postList, getContext());
-        LinearLayoutManager layoutManager1 = new LinearLayoutManager(getContext());
-        dashboardRV.setLayoutManager(layoutManager1);
+        LinearLayoutManager postLayoutManager = new LinearLayoutManager(getContext());
+        dashboardRV.setLayoutManager(postLayoutManager);
         dashboardRV.setNestedScrollingEnabled(false);
 
-
-        database.getReference().child("posts").addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                postList.clear();
-                for (DataSnapshot dataSnapshot: snapshot.getChildren()){
-                    Post post = dataSnapshot.getValue(Post.class);
-                    post.setPostId(dataSnapshot.getKey());
-                    postList.add(post);
-                }
-                dashboardRV.setAdapter(postAdapter);
-                dashboardRV.hideShimmerAdapter();
-                postAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-        chats = view.findViewById(R.id.profile_image);
-        chats.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-               // Intent iNext = new Intent(getContext(), ChatActivity.class);
-               // startActivity(iNext);
-            }
-        });
-
-        CircleImageView civNews = view.findViewById(R.id.civNews);
-        civNews.setOnClickListener((View v) ->{
-           // startActivity(new Intent(getActivity(), NewsSplashActivity.class));
-        });
-
-        addStoryImage = view.findViewById(R.id.addStoryImage);
-        addStoryImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                galleryLauncher.launch("image/*");
-            }
-        });
-
-        galleryLauncher = registerForActivityResult(new ActivityResultContracts.GetContent()
-                , new ActivityResultCallback<Uri>() {
+        // Fetch posts in newest-first order
+        database.getReference()
+                .child("posts")
+                .orderByChild("postedAt") // Ensure posts are sorted by their timestamp in Firebase
+                .addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onActivityResult(Uri result) {
-                        addStoryImage.setImageURI(result);
-                        dialog.show();
-                        final StorageReference reference = storage.getReference()
-                                .child("stories")
-                                .child(FirebaseAuth.getInstance().getUid())
-                                .child(new Date().getTime()+ "");
-                        reference.putFile(result).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                            @Override
-                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                                reference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                                    @Override
-                                    public void onSuccess(Uri uri) {
-                                        Story story= new Story();
-                                        story.setStoryAt(new Date().getTime());
-                                        database.getReference()
-                                                .child("stories")
-                                                .child(FirebaseAuth.getInstance().getUid())
-                                                .child("postedBy")
-                                                .setValue(story.getStoryAt()).addOnSuccessListener(new OnSuccessListener<Void>() {
-                                                    @Override
-                                                    public void onSuccess(Void unused) {
-                                                        UserStories stories = new UserStories(uri.toString(), story.getStoryAt());
-                                                        database.getReference()
-                                                                .child("stories")
-                                                                .child(FirebaseAuth.getInstance().getUid())
-                                                                .child("userStories")
-                                                                .push()
-                                                                .setValue(stories).addOnSuccessListener(new OnSuccessListener<Void>() {
-                                                                    @Override
-                                                                    public void onSuccess(Void aVoid) {
-                                                                        dialog.dismiss();
-                                                                    }
-                                                                });
-                                                    }
-                                                });
-                                    }
-                                });
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        postList.clear();
+                        for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                            Post post = dataSnapshot.getValue(Post.class);
+                            if (post != null) {
+                                post.setPostId(dataSnapshot.getKey());
+                                postList.add(post);
                             }
-                        });
+                        }
+                        // Reverse the post list for newest-first display
+                        Collections.reverse(postList);
+
+                        dashboardRV.setAdapter(postAdapter);
+                        dashboardRV.hideShimmerAdapter();
+                        postAdapter.notifyDataSetChanged();
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
 
                     }
                 });
 
+        // Other UI interactions
+        addStoryImage = view.findViewById(R.id.addStoryImage);
+        addStoryImage.setOnClickListener(v -> galleryLauncher.launch("image/*"));
+
+        galleryLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(),
+                result -> {
+                    if (result != null) {
+                        addStoryImage.setImageURI(result);
+                        dialog.show();
+
+                        StorageReference reference = storage.getReference()
+                                .child("stories")
+                                .child(FirebaseAuth.getInstance().getUid())
+                                .child(new Date().getTime() + "");
+                        reference.putFile(result).addOnSuccessListener(taskSnapshot -> reference.getDownloadUrl().addOnSuccessListener(uri -> {
+                            Story story = new Story();
+                            story.setStoryAt(new Date().getTime());
+                            database.getReference()
+                                    .child("stories")
+                                    .child(FirebaseAuth.getInstance().getUid())
+                                    .child("postedBy")
+                                    .setValue(story.getStoryAt())
+                                    .addOnSuccessListener(unused -> {
+                                        UserStories userStory = new UserStories(uri.toString(), story.getStoryAt());
+                                        database.getReference()
+                                                .child("stories")
+                                                .child(FirebaseAuth.getInstance().getUid())
+                                                .child("userStories")
+                                                .push()
+                                                .setValue(userStory)
+                                                .addOnSuccessListener(aVoid -> dialog.dismiss());
+                                    });
+                        }));
+                    }
+                });
 
         return view;
-
     }
 }
