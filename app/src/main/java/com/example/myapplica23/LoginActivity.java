@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 
 import com.example.myapplica23.databinding.ActivityLoginBinding;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -16,10 +17,10 @@ import com.google.firebase.auth.FirebaseUser;
 
 public class LoginActivity extends AppCompatActivity {
 
-
     ActivityLoginBinding binding;
     FirebaseAuth auth;
     FirebaseUser currentUser;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -27,39 +28,56 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         auth = FirebaseAuth.getInstance();
-
-
         currentUser = auth.getCurrentUser();
 
+        // Login Button Click Listener
         binding.loginBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                String email = binding.emailET.getText().toString().trim();
+                String password = binding.passwordET.getText().toString().trim();
 
-                String email = binding.emailET.getText().toString();
-                String password = binding.passwordET.getText().toString();
+                // Input Validation
+                if (email.isEmpty()) {
+                    binding.emailET.setError("Email is required");
+                    return;
+                }
 
-                auth.signInWithEmailAndPassword(email, password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
+                if (password.isEmpty()) {
+                    binding.passwordET.setError("Password is required");
+                    return;
+                }
 
-                        if (task.isSuccessful()){
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            startActivity(intent);
-                        }
-                        else {
-                            binding.passwordET.setError("Invalid Password");
-                        }
-
-
-
-                    }
-                });
-
-
+                // Firebase Authentication Sign In
+                auth.signInWithEmailAndPassword(email, password)
+                        .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                            @Override
+                            public void onComplete(@NonNull Task<AuthResult> task) {
+                                if (task.isSuccessful()) {
+                                    // Login Success
+                                    Toast.makeText(LoginActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
+                                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                                    startActivity(intent);
+                                    finish();
+                                } else {
+                                    // Login Failed
+                                    if (task.getException() != null) {
+                                        String errorMessage = task.getException().getMessage();
+                                        if (errorMessage != null && errorMessage.contains("password is invalid")) {
+                                            binding.passwordET.setError("Incorrect Password");
+                                        } else if (errorMessage != null && errorMessage.contains("no user record")) {
+                                            binding.emailET.setError("No account found with this email");
+                                        } else {
+                                            Toast.makeText(LoginActivity.this, "Login failed: " + errorMessage, Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                }
+                            }
+                        });
             }
         });
 
-
+        // Navigate to Sign Up Activity
         binding.gotoSignup.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -67,13 +85,13 @@ public class LoginActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        if(currentUser != null){
+        // Auto-login if a user is already signed in
+        if (currentUser != null) {
             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
             startActivity(intent);
             finish();
