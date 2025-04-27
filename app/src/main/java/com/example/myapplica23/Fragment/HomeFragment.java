@@ -1,20 +1,17 @@
 package com.example.myapplica23.Fragment;
 
 import android.app.ProgressDialog;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
-
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
 
 import com.cooltechworks.views.shimmer.ShimmerRecyclerView;
 import com.example.myapplica23.Adapter.PostAdapter;
@@ -23,7 +20,6 @@ import com.example.myapplica23.Model.Post;
 import com.example.myapplica23.Model.Story;
 import com.example.myapplica23.Model.UserStories;
 import com.example.myapplica23.R;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -31,7 +27,6 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 import com.makeramen.roundedimageview.RoundedImageView;
 
 import java.util.ArrayList;
@@ -53,6 +48,7 @@ public class HomeFragment extends Fragment {
     ProgressDialog dialog;
 
     public HomeFragment() {
+        // Required empty public constructor
     }
 
     @Override
@@ -60,6 +56,10 @@ public class HomeFragment extends Fragment {
         super.onCreate(savedInstanceState);
 
         dialog = new ProgressDialog(getContext());
+        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        dialog.setTitle("Story Uploading");
+        dialog.setMessage("Please Wait");
+        dialog.setCancelable(false);
     }
 
     @Override
@@ -68,21 +68,16 @@ public class HomeFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
         dashboardRV = view.findViewById(R.id.dashboardRV);
-        dashboardRV.showShimmerAdapter();
-
         storyRV = view.findViewById(R.id.storyRV);
+
+        dashboardRV.showShimmerAdapter();
         storyRV.showShimmerAdapter();
 
         database = FirebaseDatabase.getInstance();
         auth = FirebaseAuth.getInstance();
         storage = FirebaseStorage.getInstance();
 
-        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        dialog.setTitle("Story Uploading");
-        dialog.setMessage("Please Wait");
-        dialog.setCancelable(false);
-
-        // Story list setup
+        // Setup Story RecyclerView
         storyList = new ArrayList<>();
         StoryAdapter storyAdapter = new StoryAdapter(storyList, getContext());
         LinearLayoutManager storyLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
@@ -109,7 +104,6 @@ public class HomeFragment extends Fragment {
                                 story.setStories(userStories);
                                 storyList.add(story);
                             }
-
                             storyRV.setAdapter(storyAdapter);
                             storyRV.hideShimmerAdapter();
                             storyAdapter.notifyDataSetChanged();
@@ -118,21 +112,20 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-
+                        // Handle error
                     }
                 });
 
-        // Post list setup
+        // Setup Post RecyclerView
         postList = new ArrayList<>();
         PostAdapter postAdapter = new PostAdapter(postList, getContext());
         LinearLayoutManager postLayoutManager = new LinearLayoutManager(getContext());
         dashboardRV.setLayoutManager(postLayoutManager);
         dashboardRV.setNestedScrollingEnabled(false);
 
-        // Fetch posts in newest-first order
         database.getReference()
                 .child("posts")
-                .orderByChild("postedAt") // Ensure posts are sorted by their timestamp in Firebase
+                .orderByChild("postedAt")
                 .addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -144,9 +137,7 @@ public class HomeFragment extends Fragment {
                                 postList.add(post);
                             }
                         }
-                        // Reverse the post list for newest-first display
                         Collections.reverse(postList);
-
                         dashboardRV.setAdapter(postAdapter);
                         dashboardRV.hideShimmerAdapter();
                         postAdapter.notifyDataSetChanged();
@@ -154,11 +145,11 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-
+                        // Handle error
                     }
                 });
 
-        // Other UI interactions
+        // Add Story
         addStoryImage = view.findViewById(R.id.addStoryImage);
         addStoryImage.setOnClickListener(v -> galleryLauncher.launch("image/*"));
 
@@ -193,6 +184,17 @@ public class HomeFragment extends Fragment {
                         }));
                     }
                 });
+
+        // Profile Image click -> navigate to ProfileFragment
+        CircleImageView profileImage = view.findViewById(R.id.profile_image);
+        profileImage.setOnClickListener(v -> {
+            requireActivity()
+                    .getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.container, new ProfileFragment()) // <<<<<< FIXED this ID
+                    .addToBackStack(null)
+                    .commit();
+        });
 
         return view;
     }
