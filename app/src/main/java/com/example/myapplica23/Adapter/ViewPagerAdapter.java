@@ -6,41 +6,44 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
 
-import com.example.myapplica23.Fragment.Notificaltion2Fragment;
-import com.example.myapplica23.Fragment.RequestFragment;
+import com.example.myapplica23.Fragment.Notificaltion2Fragment; // Note the typo in your original filename
 
 public class ViewPagerAdapter extends FragmentPagerAdapter {
-
     public ViewPagerAdapter(@NonNull FragmentManager fm) {
-        super(fm);
+        super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
     }
 
     @NonNull
     @Override
     public Fragment getItem(int position) {
-
-        switch (position){
-            case 0: return new Notificaltion2Fragment();
-            case 1: return new RequestFragment();
-            default: return new Notificaltion2Fragment();
+        // You can add more fragments for other tabs here
+        if (position == 0) {
+            return new Notificaltion2Fragment();
         }
-
+        // Example for a second tab:
+        // else {
+        //     return new RequestsFragment();
+        // }
+        return new Notificaltion2Fragment(); // Default
     }
 
     @Override
     public int getCount() {
-        return 2 ;
+        // Return the number of tabs
+        return 1;
     }
 
     @Nullable
     @Override
     public CharSequence getPageTitle(int position) {
-        String title = null;
-        if (position == 0){
-            title = "NOTIFICATION";}
-        else if (position == 1){
-            title = "REQUEST";
+        // Set the title for each tab
+        if (position == 0) {
+            return "Notifications";
         }
-        return title;
+        // Example for a second tab:
+        // else {
+        //     return "Requests";
+        // }
+        return "Notifications"; // Default
     }
 }

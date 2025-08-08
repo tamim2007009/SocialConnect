@@ -2,6 +2,7 @@ package com.example.myapplica23.Fragment;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -9,7 +10,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -17,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.example.myapplica23.MainActivity;
 import com.example.myapplica23.Model.Post;
 import com.example.myapplica23.Model.User;
 import com.example.myapplica23.R;
@@ -28,10 +33,13 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Date;
 
 
@@ -69,7 +77,8 @@ public class AddFragment extends Fragment {
         // Inflate the layout for this fragment
         binding = FragmentAddBinding.inflate(inflater, container, false);
 
-        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        // OPTIMIZATION: Change dialog to show progress percentage
+        dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
         dialog.setTitle("Post Uploading");
         dialog.setMessage("Please Wait...");
         dialog.setCancelable(false);
@@ -77,27 +86,27 @@ public class AddFragment extends Fragment {
 
 
         database.getReference()
-                        .child("Users")
-                                .child(FirebaseAuth.getInstance().getUid())
-                                        .addValueEventListener(new ValueEventListener() {
-                                            @Override
-                                            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                                if (snapshot.exists()){
-                                                    User user =  snapshot.getValue(User.class);
-                                                    Picasso.get()
-                                                            .load(user.getProfilePhoto())
-                                                            .placeholder(R.drawable.cover_placeholder)
-                                                            .into(binding.profileImage);
-                                                    binding.name.setText(user.getName());
-                                                    binding.profession.setText(user.getProfession());
-                                                }
-                                            }
+                .child("Users")
+                .child(FirebaseAuth.getInstance().getUid())
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()){
+                            User user =  snapshot.getValue(User.class);
+                            Picasso.get()
+                                    .load(user.getProfilePhoto())
+                                    .placeholder(R.drawable.cover_placeholder)
+                                    .into(binding.profileImage);
+                            binding.name.setText(user.getName());
+                            binding.profession.setText(user.getProfession());
+                        }
+                    }
 
-                                            @Override
-                                            public void onCancelled(@NonNull DatabaseError error) {
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
 
-                                            }
-                                        });
+                    }
+                });
 
 
 
@@ -145,37 +154,76 @@ public class AddFragment extends Fragment {
         binding.postBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
                 dialog.show();
 
-                final StorageReference reference = storage.getReference().child("posts")
-                        .child(FirebaseAuth.getInstance().getUid())
-                        .child(new Date().getTime()+"");
-                reference.putFile(uri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        reference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                            @Override
-                            public void onSuccess(Uri uri) {
-                                Post post = new Post();
-                                post.setPostImage(uri.toString());
-                                post.setPostedBy(FirebaseAuth.getInstance().getUid());
-                                post.setPostDescription(binding.postDescription.getText().toString());
-                                post.setPostedAt(new Date().getTime());
+                try {
+                    // ============ OPTIMIZATION: IMAGE COMPRESSION START ============
+                    // 1. Convert image Uri to Bitmap
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContext().getContentResolver(), uri);
 
-                                database.getReference().child("posts")
-                                        .push()
-                                        .setValue(post).addOnSuccessListener(new OnSuccessListener<Void>() {
-                                            @Override
-                                            public void onSuccess(Void aVoid) {
-                                                dialog.dismiss();
-                                                Toast.makeText(getContext(), "Posted Successfully", Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
-                            }
-                        });
-                    }
-                });
+                    // 2. Prepare to hold the compressed image data
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+
+                    // 3. Compress the bitmap. The '80' is the quality, 100 is max. 80 is a good balance.
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream);
+
+                    // 4. Get the compressed data as a byte array
+                    byte[] data = stream.toByteArray();
+                    // ============ OPTIMIZATION: IMAGE COMPRESSION END ============
+
+
+                    final StorageReference reference = storage.getReference().child("posts")
+                            .child(FirebaseAuth.getInstance().getUid())
+                            .child(new Date().getTime()+"");
+
+                    // OPTIMIZATION: Upload the compressed byte array instead of the full file
+                    UploadTask uploadTask = reference.putBytes(data);
+
+                    uploadTask.addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onProgress(@NonNull UploadTask.TaskSnapshot snapshot) {
+                            // OPTIMIZATION: Update dialog with upload progress
+                            double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
+                            dialog.setMessage("Uploaded " + (int) progress + "%");
+                        }
+                    });
+
+                    uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                        @Override
+                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                            dialog.setMessage("Getting post URL...");
+                            reference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                                @Override
+                                public void onSuccess(Uri uri) {
+                                    Post post = new Post();
+                                    post.setPostImage(uri.toString());
+                                    post.setPostedBy(FirebaseAuth.getInstance().getUid());
+                                    post.setPostDescription(binding.postDescription.getText().toString());
+                                    post.setPostedAt(new Date().getTime());
+
+                                    database.getReference().child("posts")
+                                            .push()
+                                            .setValue(post).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                                @Override
+                                                public void onSuccess(Void aVoid) {
+                                                    dialog.dismiss();
+                                                    Toast.makeText(getContext(), "Posted Successfully", Toast.LENGTH_SHORT).show();
+
+                                                    Intent intent = new Intent(getActivity(), MainActivity.class);
+                                                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                                    startActivity(intent);
+                                                }
+                                            });
+                                }
+                            });
+                        }
+                    });
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    dialog.dismiss();
+                    Toast.makeText(getContext(), "Failed to process image", Toast.LENGTH_SHORT).show();
+                }
             }
         });
         return binding.getRoot();
@@ -185,7 +233,7 @@ public class AddFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if(data.getData()!= null){
+        if(data != null && data.getData()!= null){
             uri = data.getData();
             binding.postImage.setImageURI(uri);
             binding.postImage.setVisibility(View.VISIBLE);
