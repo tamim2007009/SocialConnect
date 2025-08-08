@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import com.example.myapplica23.Adapter.CommentAdapter;
 import com.example.myapplica23.Model.Comment;
+import com.example.myapplica23.Model.Notification;
 import com.example.myapplica23.Model.Post;
 import com.example.myapplica23.Model.User;
 import com.example.myapplica23.databinding.ActivityCommentBinding;
@@ -34,6 +35,7 @@ public class CommentActivity extends AppCompatActivity {
     FirebaseDatabase database;
     FirebaseAuth auth;
     ArrayList<Comment> list = new ArrayList<>();
+    CommentAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,51 +55,47 @@ public class CommentActivity extends AppCompatActivity {
         postId = intent.getStringExtra("postId");
         postedBy = intent.getStringExtra("postedBy");
 
+        // Set up the RecyclerView and Adapter
+        adapter = new CommentAdapter(this, list);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        binding.commentRV.setLayoutManager(layoutManager);
+        binding.commentRV.setAdapter(adapter);
+
+        // Fetch post info
+        fetchPostInfo();
+
+        // Fetch comments from Firebase and update the adapter
         database.getReference()
                 .child("posts")
-                .child(postId).addValueEventListener(new ValueEventListener() {
+                .child(postId)
+                .child("comments").addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        Post post = snapshot.getValue(Post.class);
-                        Picasso.get()
-                                .load(post.getPostImage())
-                                .placeholder(R.drawable.cover_placeholder)
-                                .into(binding.postImage);
-                        binding.description.setText(post.getPostDescription());
-                        binding.like.setText(post.getPostLike() + "");
-                        binding.comment.setText(post.getCommentCount()+"");
-//                binding.description.setText(post.getPostDescription());
+                        list.clear(); // Clear the old list before adding new data
+                        for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                            Comment comment = dataSnapshot.getValue(Comment.class);
+                            if (comment != null) {
+                                list.add(comment);
+                            }
+                        }
+                        // Notify the adapter that the data has changed so it can refresh the view
+                        adapter.notifyDataSetChanged();
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-
+                        Toast.makeText(CommentActivity.this, "Failed to load comments.", Toast.LENGTH_SHORT).show();
                     }
                 });
-
-        database.getReference().child("Users")
-                .child(postedBy).addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        User user = snapshot.getValue(User.class);
-                        Picasso.get()
-                                .load(user.getProfilePhoto())
-                                .placeholder(R.drawable.cover_placeholder)
-                                .into(binding.profileImage);
-                        binding.name.setText(user.getName());
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
-                });
-
 
         binding.commentPostBtn.setOnClickListener(new View.OnClickListener() {
-
             @Override
             public void onClick(View v) {
+                if (binding.commentET.getText().toString().trim().isEmpty()){
+                    Toast.makeText(CommentActivity.this, "Comment cannot be empty.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
                 Comment comment = new Comment();
                 comment.setCommentBody(binding.commentET.getText().toString());
                 comment.setCommentedAt(new Date().getTime());
@@ -111,6 +109,7 @@ public class CommentActivity extends AppCompatActivity {
                         .setValue(comment).addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void aVoid) {
+                                // Increment the comment count
                                 database.getReference()
                                         .child("posts")
                                         .child(postId)
@@ -118,7 +117,7 @@ public class CommentActivity extends AppCompatActivity {
                                             @Override
                                             public void onDataChange(@NonNull DataSnapshot snapshot) {
                                                 int commentCount = 0;
-                                                if (snapshot.exists()){
+                                                if (snapshot.exists()) {
                                                     commentCount = snapshot.getValue(Integer.class);
                                                 }
                                                 database.getReference()
@@ -131,66 +130,77 @@ public class CommentActivity extends AppCompatActivity {
                                                                 binding.commentET.setText("");
                                                                 Toast.makeText(CommentActivity.this, "Commented", Toast.LENGTH_SHORT).show();
 
+                                                                // Create and send notification
+                                                                Notification notification = new Notification();
+                                                                notification.setNotificationBy(FirebaseAuth.getInstance().getUid());
+                                                                notification.setNotificationAt(new Date().getTime());
+                                                                notification.setPostId(postId);
+                                                                notification.setPostedBy(postedBy);
+                                                                notification.setType("comment");
 
-//                                                                Notification notification = new Notification();
-//                                                                notification.setNotificationBy(FirebaseAuth.getInstance().getUid());
-//                                                                notification.setNotificationAt(new Date().getTime());
-//                                                                notification.setPostId(postId);
-//                                                                notification.setPostedBy(postedBy);
-//                                                                notification.setType("comment");
-//
-//                                                                FirebaseDatabase.getInstance().getReference()
-//                                                                        .child("notification")
-//                                                                        .child(postedBy)
-//                                                                        .push()
-//                                                                        .setValue(notification);
-
+                                                                FirebaseDatabase.getInstance().getReference()
+                                                                        .child("notifications")
+                                                                        .child(postedBy)
+                                                                        .push()
+                                                                        .setValue(notification);
                                                             }
                                                         });
                                             }
 
                                             @Override
-                                            public void onCancelled(@NonNull DatabaseError error) {
-
-                                            }
+                                            public void onCancelled(@NonNull DatabaseError error) {}
                                         });
                             }
                         });
-
             }
         });
+    }
 
-        CommentAdapter adapter = new CommentAdapter(this, list);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        binding.commentRV.setLayoutManager(layoutManager);
-        binding.commentRV.setAdapter(adapter);
-
+    private void fetchPostInfo() {
         database.getReference()
                 .child("posts")
-                .child(postId)
-                .child("comments").addValueEventListener(new ValueEventListener() {
+                .child(postId).addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        list.clear();
-                        for(DataSnapshot dataSnapshot : snapshot.getChildren()){
-                            Comment comment = dataSnapshot.getValue(Comment.class);
-                            list.add(comment);
-                        }
-                        adapter.notifyDataSetChanged();
+                        Post post = snapshot.getValue(Post.class);
+                        if (post == null) return;
+                        Picasso.get()
+                                .load(post.getPostImage())
+                                .placeholder(R.drawable.cover_placeholder)
+                                .into(binding.postImage);
+                        binding.description.setText(post.getPostDescription());
+                        binding.like.setText(String.valueOf(post.getPostLike()));
+                        binding.comment.setText(String.valueOf(post.getCommentCount()));
                     }
 
                     @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
+                    public void onCancelled(@NonNull DatabaseError error) {}
                 });
 
+        database.getReference().child("Users")
+                .child(postedBy).addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        User user = snapshot.getValue(User.class);
+                        if (user == null) return;
+                        Picasso.get()
+                                .load(user.getProfilePhoto())
+                                .placeholder(R.drawable.cover_placeholder)
+                                .into(binding.profileImage);
+                        binding.name.setText(user.getName());
+                    }
 
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {}
+                });
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        finish();
+        if (item.getItemId() == android.R.id.home) {
+            finish();
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 }

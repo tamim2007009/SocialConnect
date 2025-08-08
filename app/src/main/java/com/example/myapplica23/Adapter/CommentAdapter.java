@@ -46,26 +46,31 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.viewHold
         String time = TimeAgo.using(comment.getCommentedAt());
         holder.binding.time.setText(time);
 
+        // Fetch user info for the comment
         FirebaseDatabase.getInstance().getReference()
                 .child("Users")
                 .child(comment.getCommentedBy()).addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
                         User user = snapshot.getValue(User.class);
-                        Picasso.get()
-                                .load(user.getProfilePhoto())
-                                .placeholder(R.drawable.cover_placeholder)
-                                .into(holder.binding.profileImage);
-                        holder.binding.comment.setText(Html.fromHtml("<b>" + user.getName()+ "</b>"  +" : " + comment.getCommentBody()));
+                        // Add a null check to prevent crashes if the user is not found
+                        if (user != null) {
+                            Picasso.get()
+                                    .load(user.getProfilePhoto())
+                                    .placeholder(R.drawable.cover_placeholder)
+                                    .into(holder.binding.profileImage);
+                            holder.binding.comment.setText(Html.fromHtml("<b>" + user.getName() + "</b>" + " : " + comment.getCommentBody()));
+                        } else {
+                            // Handle case where user might have deleted their account
+                            holder.binding.comment.setText(Html.fromHtml("<b>[Deleted User]</b>" + " : " + comment.getCommentBody()));
+                        }
                     }
 
                     @Override
                     public void onCancelled(@NonNull DatabaseError error) {
-
+                        // You can log the error here if needed
                     }
                 });
-
-
     }
 
     @Override
@@ -73,12 +78,11 @@ public class CommentAdapter extends RecyclerView.Adapter<CommentAdapter.viewHold
         return list.size();
     }
 
-    public  class viewHolder extends RecyclerView.ViewHolder{
+    public class viewHolder extends RecyclerView.ViewHolder{
         CommentSampleBinding binding;
         public viewHolder(@NonNull View itemView) {
             super(itemView);
             binding = CommentSampleBinding.bind(itemView);
         }
     }
-
 }
