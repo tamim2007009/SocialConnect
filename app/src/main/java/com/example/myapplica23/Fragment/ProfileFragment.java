@@ -1,6 +1,8 @@
 package com.example.myapplica23.Fragment;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -10,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,26 +25,33 @@ import com.example.myapplica23.R;
 import com.example.myapplica23.databinding.FragmentProfileBinding;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 
 
 public class ProfileFragment extends Fragment {
-    RecyclerView recyclerView;
+
     ArrayList<Follow> list;
     FragmentProfileBinding binding;
     FirebaseAuth auth;
     FirebaseStorage storage;
     FirebaseDatabase database;
-//    View changeCoverPhoto;
+    ProgressDialog dialog;
+    // OPTIMIZATION: Create listener variables to manage their lifecycle
+    private ValueEventListener userValueListener;
+    private ChildEventListener followersChildListener;
 
 
     public ProfileFragment() {
@@ -52,7 +62,16 @@ public class ProfileFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
+        auth = FirebaseAuth.getInstance();
+        storage = FirebaseStorage.getInstance();
+        database = FirebaseDatabase.getInstance();
 
+        // Initialize ProgressDialog for uploads
+        dialog = new ProgressDialog(getContext());
+        dialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+        dialog.setTitle("Uploading Image");
+        dialog.setMessage("Please wait...");
+        dialog.setCancelable(false);
     }
 
     @Override
@@ -61,155 +80,153 @@ public class ProfileFragment extends Fragment {
 
         binding = FragmentProfileBinding.inflate(inflater, container, false);
 
+        setupUserDataListener();
+        setupFollowersAdapter();
+        setupFollowersListener();
 
-        auth = FirebaseAuth.getInstance();
-        storage = FirebaseStorage.getInstance();
-        database = FirebaseDatabase.getInstance();
-//        View view = inflater.inflate(R.layout.fragment_profile, container, false);
-//        changeCoverPhoto = view.findViewById(R.id.changeCoverPhoto);
-
-//        recyclerView = view.findViewById(R.id.friendRecyclerView);
-
-
-//    =====Fetch User Data From Database=====
-        database.getReference().child("Users").child(auth.getUid())
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        //list.clear();
-                        if (snapshot.exists()) {
-                            User user = snapshot.getValue(User.class);
-
-                            System.out.println("user " + user.getCoverPhoto());
-                            Picasso.get()
-                                    .load(user.getCoverPhoto())
-                                    .placeholder(R.drawable.cover_placeholder)
-                                    .into(binding.coverPhoto);
-                            binding.UserName.setText(user.getName());
-                            binding.profession.setText(user.getProfession());
-                            binding.followers.setText(user.getFollowerCount() + "");
-
-                            Picasso.get()
-                                    .load(user.getProfilePhoto())
-                                    .placeholder(R.drawable.cover_placeholder)
-                                    .into(binding.profileImage);
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
-                });
-
-        list = new ArrayList<>();
-
-//        list.add(new Follow(R.drawable.profile3));
-//        list.add(new Follow(R.drawable.profile2));
-//        list.add(new Follow(R.drawable.profile));
-//        list.add(new Follow(R.drawable.cover1));
-//        list.add(new Follow(R.drawable.cover2));
-
-        FollowersAdapter adapter = new FollowersAdapter(list, getContext());
-       LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
-        binding.friendRecyclerView.setLayoutManager(linearLayoutManager);
-        binding.friendRecyclerView.setAdapter(adapter);
-
-        database.getReference().child("Users")
-                .child(auth.getUid())
-                .child("followers").addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        list.clear();
-                        for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                            Follow follow = dataSnapshot.getValue(Follow.class);
-                            list.add(follow);
-                        }
-                        adapter.notifyDataSetChanged();
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-
-                    }
-                });
-
-
-
-
-        binding.changeCoverPhoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent();
-                intent.setAction(Intent.ACTION_GET_CONTENT);
-                intent.setType("image/*");
-                startActivityForResult(intent, 11);
-            }
+        binding.changeCoverPhoto.setOnClickListener(v -> {
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            startActivityForResult(intent, 11);
         });
 
-        binding.verifiedAccount.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent();
-                intent.setAction(Intent.ACTION_GET_CONTENT);
-                intent.setType("image/*");
-                startActivityForResult(intent, 22);
-            }
+        binding.verifiedAccount.setOnClickListener(v -> {
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            startActivityForResult(intent, 22);
         });
 
         return binding.getRoot();
+    }
+
+    private void setupUserDataListener() {
+        // Use addValueEventListener to keep profile data updated in real-time
+        userValueListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    User user = snapshot.getValue(User.class);
+                    Picasso.get()
+                            .load(user.getCoverPhoto())
+                            .placeholder(R.drawable.cover_placeholder)
+                            .into(binding.coverPhoto);
+                    binding.UserName.setText(user.getName());
+                    binding.profession.setText(user.getProfession());
+                    binding.followers.setText(String.valueOf(user.getFollowerCount()));
+                    Picasso.get()
+                            .load(user.getProfilePhoto())
+                            .placeholder(R.drawable.cover_placeholder)
+                            .into(binding.profileImage);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(getContext(), "Failed to load user data.", Toast.LENGTH_SHORT).show();
+            }
+        };
+        database.getReference().child("Users").child(auth.getUid()).addValueEventListener(userValueListener);
+    }
+
+    private void setupFollowersAdapter() {
+        list = new ArrayList<>();
+        FollowersAdapter adapter = new FollowersAdapter(list, getContext());
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+        binding.friendRecyclerView.setLayoutManager(linearLayoutManager);
+        binding.friendRecyclerView.setAdapter(adapter);
+    }
+
+    private void setupFollowersListener() {
+        // OPTIMIZATION: Use a more efficient ChildEventListener
+        followersChildListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                Follow follow = snapshot.getValue(Follow.class);
+                list.add(follow);
+                binding.friendRecyclerView.getAdapter().notifyItemInserted(list.size() - 1);
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+                // Optional: Handle follower removal if needed
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {}
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+        database.getReference().child("Users")
+                .child(auth.getUid())
+                .child("followers").addChildEventListener(followersChildListener);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == 11) {
-            if (data.getData() != null) {
-                Uri uri = data.getData();
+        if (data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            // OPTIMIZATION: Reusable function handles both cases
+            if (requestCode == 11) {
                 binding.coverPhoto.setImageURI(uri);
-
-
-                final StorageReference reference = storage.getReference()
-                        .child("cover_photo").child(FirebaseAuth.getInstance().getUid());
-                reference.putFile(uri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        Toast.makeText(getContext(), "Cover Photo Saved", Toast.LENGTH_SHORT).show();
-                        reference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                            @Override
-                            public void onSuccess(Uri uri) {
-                                Toast.makeText(getActivity(), "Photo updated", Toast.LENGTH_SHORT).show();
-                                database.getReference().child("Users").child(auth.getUid()).child("coverPhoto").setValue(uri.toString());
-                            }
-                        });
-                    }
-                });
-
-            }
-        } else {
-            if (data.getData() != null) {
-                Uri uri = data.getData();
+                uploadImage(uri, "cover_photo", "coverPhoto");
+            } else if (requestCode == 22) {
                 binding.profileImage.setImageURI(uri);
-
-
-                final StorageReference reference = storage.getReference()
-                        .child("profile_image").child(FirebaseAuth.getInstance().getUid());
-                reference.putFile(uri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        Toast.makeText(getContext(), "Profile Photo Saved", Toast.LENGTH_SHORT).show();
-                        reference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                            @Override
-                            public void onSuccess(Uri uri) {
-                                database.getReference().child("Users").child(auth.getUid()).child("profilePhoto").setValue(uri.toString());
-                            }
-                        });
-                    }
-                });
-
+                uploadImage(uri, "profile_image", "profilePhoto");
             }
         }
+    }
 
+    // OPTIMIZATION: A single, reusable, and compressed image upload function
+    private void uploadImage(Uri imageUri, String storagePath, String databaseKey) {
+        dialog.show();
+        try {
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContext().getContentResolver(), imageUri);
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream);
+            byte[] data = stream.toByteArray();
+
+            StorageReference reference = storage.getReference().child(storagePath).child(auth.getUid());
+            UploadTask uploadTask = reference.putBytes(data);
+
+            uploadTask.addOnProgressListener(snapshot -> {
+                double progress = (100.0 * snapshot.getBytesTransferred()) / snapshot.getTotalByteCount();
+                dialog.setMessage("Uploaded " + (int) progress + "%");
+            });
+
+            uploadTask.addOnSuccessListener(taskSnapshot -> {
+                dialog.setMessage("Finalizing...");
+                reference.getDownloadUrl().addOnSuccessListener(uri -> {
+                    database.getReference().child("Users").child(auth.getUid()).child(databaseKey).setValue(uri.toString());
+                    dialog.dismiss();
+                    Toast.makeText(getContext(), "Photo updated successfully!", Toast.LENGTH_SHORT).show();
+                });
+            });
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            dialog.dismiss();
+            Toast.makeText(getContext(), "Image processing failed.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // OPTIMIZATION: Remove listeners to prevent memory leaks when the view is destroyed
+        if (userValueListener != null) {
+            database.getReference().child("Users").child(auth.getUid()).removeEventListener(userValueListener);
+        }
+        if (followersChildListener != null) {
+            database.getReference().child("Users").child(auth.getUid()).child("followers").removeEventListener(followersChildListener);
+        }
+        binding = null; // Avoid memory leaks
     }
 }

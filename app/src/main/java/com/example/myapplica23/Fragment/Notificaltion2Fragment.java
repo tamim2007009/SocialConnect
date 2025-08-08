@@ -43,11 +43,6 @@ public class Notificaltion2Fragment extends Fragment {
         recyclerView = view.findViewById(R.id.notification2RV);
         list = new ArrayList<>();
         list.add(new NotificationModel(R.drawable.ic_launcher_foreground,"<b>Tamim </> Liked your post","1 hour ago"));
-        list.add(new NotificationModel(R.drawable.ic_launcher_foreground,"<b>Tamim </> Liked your post","1 hour ago"));
-        list.add(new NotificationModel(R.drawable.ic_launcher_foreground,"<b>Tamim </> Liked your post","1 hour ago"));
-        list.add(new NotificationModel(R.drawable.ic_launcher_foreground,"<b>Tamim </> Liked your post","1 hour ago"));
-        list.add(new NotificationModel(R.drawable.ic_launcher_foreground,"<b>Tamim </> Liked your post","1 hour ago"));
-        list.add(new NotificationModel(R.drawable.ic_launcher_foreground,"<b>Tamim </> Liked your post","1 hour ago"));
         NotificationAdapter notificationAdapter = new NotificationAdapter(list,getContext());
         LinearLayoutManager linearLayoutManager= new LinearLayoutManager(getContext(),LinearLayoutManager.VERTICAL,false);
         recyclerView.setLayoutManager(linearLayoutManager);
