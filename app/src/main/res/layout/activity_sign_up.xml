@@ -30,7 +30,7 @@
             android:id="@+id/welcomeText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Welcome to ReachMe"
+            android:text="Welcome to KuetConnect"
             android:textSize="28sp"
             android:textStyle="bold"
             android:textColor="@android:color/black"
